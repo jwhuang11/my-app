@@ -1,0 +1,64 @@
+namespaceName: discount-app-dev-ns
+
+deploymentName: discount-app-dev-deployment
+
+replicaCount: 1
+
+deploymentImage:
+  repository: <IMAGE>
+  pullPolicy: Always
+
+deploymentContainer:
+  name: discount-app-dev
+  targetport: 80
+  cpu: 256m
+  memory: 512Mi
+  
+labels:
+  app.kubernetes.io/name: discount-app-dev
+ 
+matchLabels:
+  app.kubernetes.io/name: discount-app-dev
+
+hpaName : discount-app-dev-hpa
+
+hpa:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 2
+  targetCPUUtilizationPercentage: 70
+  
+serviceName: discount-app-dev-service
+
+service:
+  port: 80
+  targetport: 80
+  protocol: TCP
+  type: NodePort
+  
+  
+ingressName: discount-app-dev-ingress
+
+ingressRules:
+  host: discount-service-dev.xyz
+  type: Prefix
+  path: "/"
+  
+secretName: discount-app-dev-secret
+
+secret:
+  type: parameterAlias
+  credential: credential
+  
+parameterStore:
+  type: ssmparameter
+  credential: /discount-app/credential
+  credentialAlias: my-token
+  
+
+
+
+
+
+
+

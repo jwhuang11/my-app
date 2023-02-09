@@ -1,0 +1,63 @@
+namespaceName: product-app-prd-ns
+
+deploymentName: product-app-prd-deployment
+
+replicaCount: 2
+
+deploymentImage:
+  repository: <IMAGE>
+  pullPolicy: Always
+
+deploymentContainer:
+  name: product-app-prd
+  targetport: 80
+  cpu: 512m
+  memory: 1024Mi
+  
+labels:
+  app.kubernetes.io/name: product-app-prd
+ 
+matchLabels:
+  app.kubernetes.io/name: product-app-prd
+
+hpaName : product-app-prd-hpa
+
+hpa:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 4
+  targetCPUUtilizationPercentage: 50
+  
+serviceName: product-app-prd-service
+
+service:
+  port: 80
+  targetport: 80
+  protocol: TCP
+  type: NodePort
+  
+  
+ingressName: product-app-prd-ingress
+
+ingressRules:
+  host: product-service.com
+  type: Prefix
+  path: "/"
+  
+secretName: product-app-prd-secret
+
+secret:
+  type: parameterAlias
+  credential: credential
+  
+parameterStore:
+  type: ssmparameter
+  credential: /product-app/credential
+  credentialAlias: my-token
+
+
+
+
+
+
+

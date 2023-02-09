@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package product;
+
+option go_package = "github.com/medium-stories/go-mono-repo/user/proto";
+
+service AccountManagement {
+  rpc AddAccount(AccountRequest) returns(AccountMessage) {};
+}
+
+message AccountRequest {}
+
+message AccountsResponse {
+  repeated AccountMessage accounts = 1;
+}
+
+message AccountMessage {}

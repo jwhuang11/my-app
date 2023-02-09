@@ -1,0 +1,63 @@
+namespaceName: user-app-stg-ns
+
+deploymentName: user-app-stg-deployment
+
+replicaCount: 1
+
+deploymentImage:
+  repository: <IMAGE>
+  pullPolicy: Always
+
+deploymentContainer:
+  name: user-app-stg
+  targetport: 80
+  cpu: 256m
+  memory: 512Mi
+  
+labels:
+  app.kubernetes.io/name: user-app-stg
+ 
+matchLabels:
+  app.kubernetes.io/name: user-app-stg
+
+hpaName : user-app-stg-hpa
+
+hpa:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 2
+  targetCPUUtilizationPercentage: 70
+  
+serviceName: user-app-stg-service
+
+service:
+  port: 80
+  targetport: 80
+  protocol: TCP
+  type: NodePort
+  
+  
+ingressName: user-app-stg-ingress
+
+ingressRules:
+  host: user-service-dev.xyz
+  type: Prefix
+  path: "/"
+  
+secretName: user-app-stg-secret
+
+secret:
+  type: parameterAlias
+  credential: credential
+  
+parameterStore:
+  type: ssmparameter
+  credential: /user-app/credential
+  credentialAlias: my-token
+
+
+
+
+
+
+

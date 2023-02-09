@@ -1,0 +1,39 @@
+version: 0.2
+env:
+  parameter-store:
+    STAGE : /discount-app/stage
+phases:
+  install: # Install kubectl (needed for Helm) and Helm
+    commands:
+      - curl -sS -o aws-iam-authenticator https://amazon-eks.s3.us-west-2.amazonaws.com/1.19.6/2021-01-05/bin/linux/amd64/aws-iam-authenticator
+      - curl -sS -o kubectl https://amazon-eks.s3.us-west-2.amazonaws.com/1.20.4/2021-04-12/bin/linux/amd64/kubectl
+      - chmod +x ./kubectl ./aws-iam-authenticator
+      - export PATH=$PWD/:$PATH
+      - curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 > get_helm.sh
+      - chmod 700 get_helm.sh
+      - ./get_helm.sh
+  pre_build: #Add kubeconfig to access to EKS cluster
+    commands:
+      - cd cmd/discount/
+      - echo Logging in to Amazon ECR...
+      - $(aws ecr get-login --no-include-email --region $AWS_REGION)
+      - REPOSITORY_URI=<aws_account_id>.dkr.ecr.ap-southeast-1.amazonaws.com/discount-service
+      - TAG="$(date +%Y-%m-%d.%H.%M.%S).$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | head -c 8)"
+      - export KUBECONFIG=$HOME/.kube/config
+  build: # Build Docker image
+    commands:
+      - echo Building the Docker image...
+      - docker build --tag $REPOSITORY:latest .
+      - docker tag $REPOSITORY_URI:latest $REPOSITORY_URI:$IMAGE_TAG
+
+  post_build:
+    commands: # Push the Docker image to the ECR
+      - docker push $REPOSITORY:$TAG
+      - IMAGE_URI="$REPOSITORY_URI:$IMAGE_TAG"
+      - docker push $REPOSITORY_URI:$IMAGE_TAG
+      - docker push $REPOSITORY_URI:latest
+      - sed -ie "s@<IMAGE>@$IMAGE_URI@g" manifest/values/$STAGE.yaml
+      - helm upgrade -i discount-app-dev -f manifest/values/$STAGE.yaml
+      - printf '[{"name":"discount-service","imageUri":"%s"}]' $REPOSITORY:$TAG > build.json
+artifacts:
+  files: build.json
