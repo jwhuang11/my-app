@@ -1,0 +1,91 @@
+name: Trigger Service Pipeline
+on:
+  push:
+    branches:
+      - development
+      - staging
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    name: Trigger Service Pipelines
+    steps:
+      
+      # GITHUB_REF = Branch
+      - name: Create variables to match branch
+        id: credentials 
+        run: |
+          branch=${GITHUB_REF##*/}
+          echo "::set-output name=AWS_ACCESS_KEY_ID::AWS_ACCESS_KEY_ID_${branch^^}"
+          echo "::set-output name=AWS_SECRET_ACCESS_KEY::AWS_SECRET_ACCESS_KEY_${branch^^}"
+          
+          if [ "$branch" == "development" ]; then
+            echo "STAGE=dev" >> $GITHUB_ENV
+          elif [ "$branch" == "staging" ]; then
+            echo "STAGE=stg" >> $GITHUB_ENV
+          elif [ "$branch" == "master" ]; then
+            echo "STAGE=prd" >> $GITHUB_ENV
+          fi
+      
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+          
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets[steps.credentials.outputs.AWS_ACCESS_KEY_ID] }} 
+          aws-secret-access-key: ${{ secrets[steps.credentials.outputs.AWS_SECRET_ACCESS_KEY] }}
+          aws-region: "${{ secrets.AWS_DEFAULT_REGION }}"
+          
+      - name: commons Changed Files
+        id: commons
+        uses: tj-actions/changed-files@v20
+        with:
+          files: |
+            internal/**
+            go.mod
+            go.sum
+          
+      - name: Discount Service Changed Files
+        id: discountservice
+        uses: tj-actions/changed-files@v20
+        with:
+          files: |
+            cmd/discount/**
+            discount/**
+            buildspec/buildspec_discount_*.yml
+          
+      - name: Discount Service Pipeline
+        if: steps.commons.outputs.any_changed == 'true' || steps.discountservice.outputs.any_changed == 'true'
+        run: |
+          aws codepipeline start-pipeline-execution --name discount-service-${STAGE}-pipeline
+          
+      - name: Product Service Changed Files
+        id: productservice
+        uses: tj-actions/changed-files@v20
+        with:
+          files: |
+            cmd/product/**
+            discount/**
+            buildspec/buildspec_product_*.yml
+          
+      - name: Product Service Pipeline
+        if: steps.commons.outputs.any_changed == 'true' || steps.productservice.outputs.any_changed == 'true'
+        run: |
+          aws codepipeline start-pipeline-execution --name product-service-${STAGE}-pipeline
+          
+      - name: User Service Changed Files
+        id: userservice
+        uses: tj-actions/changed-files@v20
+        with:
+          files: |
+            cmd/user/**
+            user/**
+            buildspec/buildspec_user_*.yml
+          
+      - name: User Service Pipeline
+        if: steps.commons.outputs.any_changed == 'true' || steps.userservice.outputs.any_changed == 'true'
+        run: |
+          aws codepipeline start-pipeline-execution --name user-service-${STAGE}-pipeline
